@@ -1,18 +1,19 @@
-######################################################
+# main task of the project is to estimate the churn, appetency and up-selling probability
+
 # Splitting data set into multiple parts for training, testing and calibaration
 d <- read.table('orange_small_test.data', header = T, sep = '\t', na.strings = c("NA",""))
 
-# churn is account cancellation
+# churn is tendency of users to switch provider
 churn <- read.table('orange_small_train_churn.labels', header = F,sep = '\t')
 
 d$churn <- churn$V1
 
-# the innate tendency to use new products and services
+# appetency: propensity to buy new products and services
 appetency <- read.table('orange_small_train_appetency.labels', header = F, sep = '\t')
 
 d$appetency <- appetency$V1
 
-# willingness to respond favourably to marketing pitches
+# upselling: buy upgrades or add ons proposed to them to make the sale profitable 
 upselling <- read.table('orange_small_train_upselling.labels', header = F, sep = '\t')
 
 d$upselling <- upselling$V1
@@ -26,32 +27,36 @@ dTrainAll <- subset(d,rgroup <= 0.9)
 dTest <- subset(d, rgroup > 0.9)
 
 outcomes <- c('churn','appetency', 'upselling')
-# taking all the columns except outcomes and rgoup i.e. 'churn','appetency', 'upselling' and rgoup
+
+# taking all the columns except outcomes and rgoup i.e. 'churn','appetency', 'upselling' and rgroup
 vars <- setdiff(colnames(dTrainAll), c(outcomes,'rgroup'))
 
+# get the category variables i.e. factors and characters
 catVars <- vars[sapply(dTrainAll[,vars], class) %in% c('factor','character')]
 
+# get the nueric variables
 numericVars <- vars[sapply(dTrainAll[,vars],class) %in% c('numeric','integer')]
 
 outcome <- 'churn'
 pos <- '1'
 
-# divinding train data for training and calibratin
-useForCal <- rbinom(n=dim(dTrainAll[1]),size=1,prob = .4) > 0
+# divinding train data into training and calibratin
+
+useForCal <- rbinom(n=dim(dTrainAll[1]),size=1,prob = .5) > 0
 
 dCal <- subset(dTrainAll, useForCal)
 dTrain <- subset(dTrainAll, !useForCal)
 
 # data splitting ends here
-#########################################################
 
 # using categorical features for building single variable models
 
 table218 <- table(
                 var218=dTrain[,"Var218"],
-                churn = dTrain[,outcome],
+                churn = dTrain[,outcome],  # remember outcome here is "churn"
                 useNA = 'ifany'
 )
+
 #churn grouped by table218
 print(table218)
 
@@ -62,8 +67,12 @@ print(table218[,2]/(table218[,1] + table218[,2]))
 
 mkPredC <- function(outCol, varCol, appCol){
         
-        pPos <- sum(outCol == pos)/length(outCol)
+        # outCol holds output for churn so take those churn values that are positive i.e. 1
+        pPos <- sum(outCol == pos)/length(outCol)  
+        
+        # select all those entries from outCol i.e. outcome when input variable is NA and change them to factor
         naTab <- table(as.factor(outCol[is.na(varCol)]))
+        
         
         pPosWna <- (naTab/sum(naTab))[pos]
         
@@ -81,6 +90,8 @@ mkPredC <- function(outCol, varCol, appCol){
         
 }
 
+# making prediction based on categorical variables
+
 
 for (v in catVars){
         
@@ -93,26 +104,20 @@ for (v in catVars){
 # Scoring categorical variable by AUC
 
 library('ROCR')
-calcAUC <- function (predCol, outcol){
-        perf <- performance(prediction(predcol, outcol == pos), 'auc')
+
+calcAUC <- function(predcol, outcol){
+        perf <- performance(prediction(predcol, outcol==pos), 'auc')
         as.numeric(perf@y.values)
 }
 
-for(v in catVars){
-        pi <- paste('pred',v,sep='')
-        
+for ( v in catVars){
+        pi <- paste('pred',v,sep = '')
         aucTrain <- calcAUC(dTrain[,pi],dTrain[,outcome])
-        
         if(aucTrain >= 0.8){
-                aucCal <- calcAUC(dcal[,pi], dCal[,outcome])
-                print(sprintf("%s, trainAUC: %4.3f calibration AUC: %4.3f", pi,aucTrain,aucCal))
+                aucCal <- calcAUC(dCal[,pi],dCal[,outcome])
+                print (sprintf("%s, trainAUC: %4.3f calibrationAUC: %4.3f", pi,aucTrain, aucCal))
         }
-        
 }
-
-
-
-
 
 
 
