@@ -45,6 +45,78 @@ dTrain <- subset(dTrainAll, !useForCal)
 # data splitting ends here
 #########################################################
 
+# using categorical features for building single variable models
+
+table218 <- table(
+                var218=dTrain[,"Var218"],
+                churn = dTrain[,outcome],
+                useNA = 'ifany'
+)
+#churn grouped by table218
+print(table218)
+
+#churn rates grouped by table218. churn happens when churn == 1 hence table[,2] is selected
+print(table218[,2]/(table218[,1] + table218[,2]))
+
+# single variable model for categorical variables
+
+mkPredC <- function(outCol, varCol, appCol){
+        
+        pPos <- sum(outCol == pos)/length(outCol)
+        naTab <- table(as.factor(outCol[is.na(varCol)]))
+        
+        pPosWna <- (naTab/sum(naTab))[pos]
+        
+        vTab <- table(as.factor(outCol), varCol)
+        
+        pPosWv <- (vTab[pos,]+1.0e-3*pPos)/(colSums(vTab)+1.0e-3)
+                
+        pred <- pPosWv[appCol]
+        
+        pred[is.na(appCol)] <- pPosWna
+        
+        pred[is.na(pred)] <- pPosWv
+        
+        pred
+        
+}
+
+
+for (v in catVars){
+        
+        pi <- paste('pred',v,sep = '')
+        dTrain[,pi] <- mkPredC(dTrain[,outcome],dTrain[,v],dTrain[,v])
+        dCal[,pi] <- mkPredC(dTrain[,outcome],dTrain[,v],dCal[,v])
+        dTest[,pi] <- mkPredC(dTrain[,outcome],dTrain[,v],dTest[,v])
+}
+
+# Scoring categorical variable by AUC
+
+library('ROCR')
+calcAUC <- function (predCol, outcol){
+        perf <- performance(prediction(predcol, outcol == pos), 'auc')
+        as.numeric(perf@y.values)
+}
+
+for(v in catVars){
+        pi <- paste('pred',v,sep='')
+        
+        aucTrain <- calcAUC(dTrain[,pi],dTrain[,outcome])
+        
+        if(aucTrain >= 0.8){
+                aucCal <- calcAUC(dcal[,pi], dCal[,outcome])
+                print(sprintf("%s, trainAUC: %4.3f calibration AUC: %4.3f", pi,aucTrain,aucCal))
+        }
+        
+}
+
+
+
+
+
+
+
+
 
 
 
