@@ -117,7 +117,62 @@ for ( v in catVars){
                 aucCal <- calcAUC(dCal[,pi],dCal[,outcome])
                 print (sprintf("%s, trainAUC: %4.3f calibrationAUC: %4.3f", pi,aucTrain, aucCal))
         }
+        
 }
+
+# using numeric features
+
+mkPredN <- function(outCol, varCol, appCol){
+        
+        cuts <- unique(as.numeric(quantile(varCol, 
+                                           probs = seq(0,1,0,0), na.rm = T)))
+        
+        varC <- cut(varCol, cuts)
+        
+        appC <- cut(appCol, cuts)
+        
+        mkPredC(outCol, varC, appC)
+}
+
+for ( v in numericVars){
+        pi <- paste('pred',v,sep = '')
+        dTrain[,pi] <- mkPredN(dTrain[,outcome], dTrain[,v], dTrain[,v])
+        dTest[,pi] <- mkPredN(dTrain[,outcome], dTrain[,v], dTest[,v])
+        dCal[,pi] <- mkPredN(dTrain[,outcome], dTrain[,v], dTest[,v])
+        aucTrain <- calcAUC(dTrain[,pi], dTrain[,outcome])
+        if(aucTrain >= 0.5){
+                aucCal <- calcAUC(dCal[,pi], dCal[,outcome])
+                print(sprintf("%s trainAUC: %4.3f calibrationAUC: %4.3f", pi,aucTrain,aucCal))
+                
+        }
+}
+
+# variable performance of predVar225
+ggplot(data=dCal) + geom_density(aes(x=predVar225, color=as.factor(churn)))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
