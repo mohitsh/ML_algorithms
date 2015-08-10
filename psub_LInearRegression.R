@@ -31,8 +31,45 @@ g1 <- g1 + geom_point(alpha = 0.2, color = 'black')
 g1 <- g1 + geom_smooth(aes(x = predLogPINCP, y = predLogPINCP - log(PINCP, base = 10)),
                        color = 'black')
 
-
 g1
+
+# Rsquared error
+# for test data
+
+y_hat = dtest$predLogPINCP
+y = log(dtest$PINCP, base = 10)
+
+R_squared_dtest = 1 - (sum((y-y_hat)^2))/(sum((y-mean(y))^2))
+# value is 0.2605496
+
+# root mean square error
+rmse_test <- sqrt(mean((y-y_hat)^2))
+# value:  0.2752171
+
+# for train data
+y_hat = dtrain$predLogPINCP
+y = log(dtrain$PINCP, base = 10)
+
+R_squared_dtrain = 1 - (sum((y-y_hat)^2))/(sum((y-mean(y))^2))
+# value is  0.3382568
+
+# root mean square error
+rmse_train <- sqrt(mean((y-y_hat)^2))
+# value is  0.2651856
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
